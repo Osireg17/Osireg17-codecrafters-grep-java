@@ -1,9 +1,5 @@
 
 import java.util.Scanner;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class Main {
 
@@ -16,122 +12,154 @@ public class Main {
         String pattern = args[1];
         Scanner scanner = new Scanner(System.in);
         String inputLine = scanner.nextLine();
-        List<Character> inputChars = stringToCharList(inputLine);
 
         System.err.println("Logs from your program will appear here!");
 
-        if (matchPattern(inputChars, pattern)) {
+        if (match(pattern, inputLine)) {
             System.exit(0);
         } else {
             System.exit(1);
         }
     }
 
-    public static List<Character> stringToCharList(String str) {
-        List<Character> chars = new ArrayList<>();
-        for (char c : str.toCharArray()) {
-            chars.add(c);
+    // C-style regex matcher based on codecrafters example
+    // match: search for regexp anywhere in text
+    public static boolean match(String regexp, String text) {
+        if (regexp.length() > 0 && regexp.charAt(0) == '^') {
+            return matchHere(regexp.substring(1), text, 0);
         }
-        return chars;
-    }
-
-    public static boolean matchPattern(List<Character> inputChars, String pattern) {
-        // Sliding window approach - check each position
-        for (int i = 0; i < inputChars.size(); i++) {
-            if (matchPatternAtPosition(inputChars, i, pattern)) {
+        
+        // For complex patterns with escape sequences or character classes, use enhanced matcher
+        if (regexp.contains("\\") || regexp.contains("[")) {
+            for (int i = 0; i <= text.length(); i++) {
+                if (matchPattern(regexp, text, 0, i)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        
+        // Must look even if string is empty (for simple patterns)
+        for (int i = 0; i <= text.length(); i++) {
+            if (matchHere(regexp, text, i)) {
                 return true;
             }
         }
         return false;
     }
-
-    public static boolean matchPatternAtPosition(List<Character> inputChars, int position, String pattern) {
-        if (position >= inputChars.size()) {
+    
+    // matchHere: search for regexp at beginning of text (starting at position)
+    public static boolean matchHere(String regexp, String text, int textPos) {
+        // If pattern is empty, we've matched successfully
+        if (regexp.length() == 0) {
+            return true;
+        }
+        
+        // Handle star quantifier (c*)
+        if (regexp.length() > 1 && regexp.charAt(1) == '*') {
+            return matchStar(regexp.charAt(0), regexp.substring(2), text, textPos);
+        }
+        
+        // Handle end anchor ($)
+        if (regexp.length() == 1 && regexp.charAt(0) == '$') {
+            return textPos == text.length();
+        }
+        
+        // Check if current character matches and recurse
+        if (textPos < text.length() && matchCharacter(regexp.charAt(0), text.charAt(textPos))) {
+            return matchHere(regexp.substring(1), text, textPos + 1);
+        }
+        
+        return false;
+    }
+    
+    // matchStar: search for c*regexp at beginning of text
+    public static boolean matchStar(char c, String regexp, String text, int textPos) {
+        // Try matching zero occurrences first
+        if (matchHere(regexp, text, textPos)) {
+            return true;
+        }
+        
+        // Try matching one or more occurrences
+        while (textPos < text.length() && matchCharacter(c, text.charAt(textPos))) {
+            textPos++;
+            if (matchHere(regexp, text, textPos)) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    // matchCharacter: check if pattern character matches text character
+    public static boolean matchCharacter(char patternChar, char textChar) {
+        // Handle wildcard
+        if (patternChar == '.') {
+            return true; // . matches any character
+        }
+        
+        // For literal character matching
+        return patternChar == textChar;
+    }
+    
+    // Enhanced matcher for handling escape sequences like \d, \w
+    public static boolean matchPattern(String pattern, String text, int patternPos, int textPos) {
+        if (patternPos >= pattern.length()) {
+            return true; // Pattern fully consumed
+        }
+        
+        if (textPos >= text.length()) {
+            return false; // Text consumed but pattern remains
+        }
+        
+        char currentChar = pattern.charAt(patternPos);
+        
+        // Handle escape sequences
+        if (currentChar == '\\' && patternPos + 1 < pattern.length()) {
+            char nextChar = pattern.charAt(patternPos + 1);
+            switch (nextChar) {
+                case 'd':
+                    return Character.isDigit(text.charAt(textPos)) && 
+                           matchPattern(pattern, text, patternPos + 2, textPos + 1);
+                case 'w':
+                    return (Character.isLetterOrDigit(text.charAt(textPos)) || text.charAt(textPos) == '_') && 
+                           matchPattern(pattern, text, patternPos + 2, textPos + 1);
+                default:
+                    return text.charAt(textPos) == nextChar && 
+                           matchPattern(pattern, text, patternPos + 2, textPos + 1);
+            }
+        }
+        
+        // Handle character classes [abc] and [^abc]
+        if (currentChar == '[') {
+            int closeBracket = pattern.indexOf(']', patternPos);
+            if (closeBracket != -1) {
+                String charClass = pattern.substring(patternPos, closeBracket + 1);
+                boolean matches = matchCharacterClass(charClass, text.charAt(textPos));
+                return matches && matchPattern(pattern, text, closeBracket + 1, textPos + 1);
+            }
+        }
+        
+        // Handle literal characters
+        return matchCharacter(currentChar, text.charAt(textPos)) && 
+               matchPattern(pattern, text, patternPos + 1, textPos + 1);
+    }
+    
+    // Handle character classes like [abc] or [^abc]
+    public static boolean matchCharacterClass(String charClass, char textChar) {
+        if (!charClass.startsWith("[") || !charClass.endsWith("]")) {
             return false;
         }
-        return matchCharacterWithRegex(inputChars.get(position), pattern);
-    }
-    
-    public static boolean matchCharacterWithRegex(char ch, String pattern) {
-        String charStr = String.valueOf(ch);
         
-        try {
-            // Convert our pattern to Java regex pattern
-            String regexPattern = convertToJavaRegex(pattern);
-            Pattern compiledPattern = Pattern.compile(regexPattern);
-            Matcher matcher = compiledPattern.matcher(charStr);
-            return matcher.matches();
-        } catch (Exception e) {
-            // Fallback to original logic for unhandled patterns
-            return matchCharacterFallback(ch, pattern);
-        }
-    }
-    
-    public static String convertToJavaRegex(String pattern) {
-        switch (pattern) {
-            case "\\d" -> {
-                return "\\d";
-            }
-            case "\\w" -> {
-                return "\\w";
-            }
-            default -> {
-                if (pattern.length() == 1) {
-                    return Pattern.quote(pattern);
-                } else if (pattern.startsWith("[") && pattern.endsWith("]")) {
-                    return pattern; // Character classes are already valid regex
-                } else {
-                    throw new RuntimeException("Unhandled pattern: " + pattern);
-                }
-            }
-        }
-    }
-    
-    public static boolean matchCharacterFallback(char ch, String pattern) {
-        switch (pattern) {
-            case "\\d" -> {
-                return Character.isDigit(ch);
-            }
-            case "\\w" -> {
-                return Character.isLetterOrDigit(ch) || ch == '_';
-            }
-            default -> {
-                if (pattern.length() == 1) {
-                    return ch == pattern.charAt(0);
-                } else if (pattern.startsWith("[") && pattern.endsWith("]")) {
-                    PatternType groupType = getCharacterGroupType(pattern);
-                    if (groupType == PatternType.POSITIVE_GROUP) {
-                        String chars = pattern.substring(1, pattern.length() - 1);
-                        return chars.indexOf(ch) != -1;
-                    } else if (groupType == PatternType.NEGATIVE_GROUP) {
-                        String chars = pattern.substring(2, pattern.length() - 1);
-                        return chars.indexOf(ch) == -1;
-                    }
-                    return false;
-                } else {
-                    throw new RuntimeException("Unhandled pattern: " + pattern);
-                }
-            }
+        String chars = charClass.substring(1, charClass.length() - 1);
+        boolean isNegative = chars.startsWith("^");
+        
+        if (isNegative) {
+            chars = chars.substring(1);
+            return chars.indexOf(textChar) == -1;
+        } else {
+            return chars.indexOf(textChar) != -1;
         }
     }
 
-    public static PatternType getCharacterGroupType(String pattern) {
-        if (pattern == null || pattern.length() < 3) {
-            return null;
-        }
-
-        if (pattern.startsWith("[") && pattern.endsWith("]")) {
-            if (pattern.charAt(1) == '^') {
-                return PatternType.NEGATIVE_GROUP;
-            } else {
-                return PatternType.POSITIVE_GROUP;
-            }
-        }
-        return null;
-    }
-
-    public static int isPositiveCharacterGroup(String pattern) {
-        PatternType type = getCharacterGroupType(pattern);
-        return (type == PatternType.POSITIVE_GROUP) ? 0 : 1;
-    }
 }
