@@ -28,6 +28,9 @@ public class Main {
         } else if (pattern.equals("\\d")) {
             //if a digit is present return 0, if not return 1
             return inputLine.matches(".*\\d.*");
+        } else if (pattern.equals("\\w")) {
+            //if a word character is present return 0, if not return 1
+            return inputLine.matches(".*\\w.*");
         } else {
             throw new RuntimeException("Unhandled pattern: " + pattern);
         }
