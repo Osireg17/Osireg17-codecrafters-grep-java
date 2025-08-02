@@ -34,8 +34,11 @@ public class Main {
                 if (pattern.length() == 1) {
                     return inputLine.contains(pattern);
                 } else if (pattern.startsWith("[") && pattern.endsWith("]")) {
-                    if (isPositiveCharacterGroup(pattern) == 0) {
+                    PatternType groupType = getCharacterGroupType(pattern);
+                    if (groupType == PatternType.POSITIVE_GROUP) {
                         return inputLine.matches(".*[" + pattern.substring(1, pattern.length() - 1) + "].*");
+                    } else if (groupType == PatternType.NEGATIVE_GROUP) {
+                        return inputLine.matches(".*[^" + pattern.substring(2, pattern.length() - 1) + "].*");
                     }
                     return false;
                 } else {
@@ -45,15 +48,23 @@ public class Main {
         }
     }
 
-    public static int isPositiveCharacterGroup(String pattern) {
+    public static PatternType getCharacterGroupType(String pattern) {
         if (pattern == null || pattern.length() < 3) {
-            return 1;
+            return null;
         }
 
-        boolean isPositiveGroup = pattern.startsWith("[")
-                && pattern.endsWith("]")
-                && pattern.charAt(1) != '^';
+        if (pattern.startsWith("[") && pattern.endsWith("]")) {
+            if (pattern.charAt(1) == '^') {
+                return PatternType.NEGATIVE_GROUP;
+            } else {
+                return PatternType.POSITIVE_GROUP;
+            }
+        }
+        return null;
+    }
 
-        return isPositiveGroup ? 0 : 1;
+    public static int isPositiveCharacterGroup(String pattern) {
+        PatternType type = getCharacterGroupType(pattern);
+        return (type == PatternType.POSITIVE_GROUP) ? 0 : 1;
     }
 }
