@@ -23,16 +23,37 @@ public class Main {
     }
 
     public static boolean matchPattern(String inputLine, String pattern) {
-        if (pattern.length() == 1) {
-            return inputLine.contains(pattern);
-        } else if (pattern.equals("\\d")) {
-            //if a digit is present return 0, if not return 1
-            return inputLine.matches(".*\\d.*");
-        } else if (pattern.equals("\\w")) {
-            //if a word character is present return 0, if not return 1
-            return inputLine.matches(".*\\w.*");
-        } else {
-            throw new RuntimeException("Unhandled pattern: " + pattern);
+        switch (pattern) {
+            case "\\d" -> {
+                return inputLine.matches(".*\\d.*");
+            }
+            case "\\w" -> {
+                return inputLine.matches(".*\\w.*");
+            }
+            default -> {
+                if (pattern.length() == 1) {
+                    return inputLine.contains(pattern);
+                } else if (pattern.startsWith("[") && pattern.endsWith("]")) {
+                    if (isPositiveCharacterGroup(pattern) == 0) {
+                        return inputLine.matches(".*[" + pattern.substring(1, pattern.length() - 1) + "].*");
+                    }
+                    return false;
+                } else {
+                    throw new RuntimeException("Unhandled pattern: " + pattern);
+                }
+            }
         }
+    }
+
+    public static int isPositiveCharacterGroup(String pattern) {
+        if (pattern == null || pattern.length() < 3) {
+            return 1;
+        }
+
+        boolean isPositiveGroup = pattern.startsWith("[")
+                && pattern.endsWith("]")
+                && pattern.charAt(1) != '^';
+
+        return isPositiveGroup ? 0 : 1;
     }
 }
