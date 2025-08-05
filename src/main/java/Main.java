@@ -22,13 +22,13 @@ public class Main {
         }
     }
 
-    // C-style regex matcher based on codecrafters example
+
     // match: search for regexp anywhere in text
     public static boolean match(String regexp, String text) {
         if (regexp.length() > 0 && regexp.charAt(0) == '^') {
             return matchHere(regexp.substring(1), text, 0);
         }
-        
+
         // For complex patterns with escape sequences or character classes, use enhanced matcher
         if (regexp.contains("\\") || regexp.contains("[")) {
             for (int i = 0; i <= text.length(); i++) {
@@ -38,7 +38,8 @@ public class Main {
             }
             return false;
         }
-        
+
+
         // Must look even if string is empty (for simple patterns)
         for (int i = 0; i <= text.length(); i++) {
             if (matchHere(regexp, text, i)) {
@@ -47,44 +48,64 @@ public class Main {
         }
         return false;
     }
-    
+
     // matchHere: search for regexp at beginning of text (starting at position)
     public static boolean matchHere(String regexp, String text, int textPos) {
         // If pattern is empty, we've matched successfully
         if (regexp.length() == 0) {
             return true;
         }
-        
+
         // Handle star quantifier (c*)
         if (regexp.length() > 1 && regexp.charAt(1) == '*') {
             return matchStar(regexp.charAt(0), regexp.substring(2), text, textPos);
         }
-        
+
         // Handle plus quantifier (c+)
         if (regexp.length() > 1 && regexp.charAt(1) == '+') {
             return matchPlus(regexp.charAt(0), regexp.substring(2), text, textPos);
         }
-        
+
+        //Handle question mark quantifier (c?)
+        if (regexp.length() > 1 && regexp.charAt(1) == '?') {
+            return matchQuestion(regexp.charAt(0), regexp.substring(2), text, textPos);
+        }
+
         // Handle end anchor ($)
         if (regexp.length() == 1 && regexp.charAt(0) == '$') {
             return textPos == text.length();
         }
-        
+
         // Check if current character matches and recurse
         if (textPos < text.length() && matchCharacter(regexp.charAt(0), text.charAt(textPos))) {
             return matchHere(regexp.substring(1), text, textPos + 1);
         }
-        
+
         return false;
     }
-    
+
+
+    private static boolean matchQuestion(char charAt, String substring, String text, int textPos) {
+        if (matchHere(substring, text, textPos)) {
+            return true;
+        }
+
+        // try matching exactly one occurrence
+        if (textPos < text.length() && matchCharacter(charAt, text.charAt(textPos))) {
+            return matchHere(substring, text, textPos + 1);
+        }
+
+        return false;
+    }
+
+
     // matchStar: search for c*regexp at beginning of text
     public static boolean matchStar(char c, String regexp, String text, int textPos) {
         // Try matching zero occurrences first
         if (matchHere(regexp, text, textPos)) {
             return true;
         }
-        
+
         // Try matching one or more occurrences
         while (textPos < text.length() && matchCharacter(c, text.charAt(textPos))) {
             textPos++;
@@ -92,17 +113,17 @@ public class Main {
                 return true;
             }
         }
-        
+
         return false;
     }
-    
+
     // matchPlus: search for c+regexp at beginning of text (one or more)
     public static boolean matchPlus(char c, String regexp, String text, int textPos) {
         // Must match at least one occurrence
         if (textPos >= text.length() || !matchCharacter(c, text.charAt(textPos))) {
             return false;
         }
-        
+
         // Try matching one or more occurrences
         while (textPos < text.length() && matchCharacter(c, text.charAt(textPos))) {
             textPos++;
@@ -110,49 +131,49 @@ public class Main {
                 return true;
             }
         }
-        
+
         return false;
     }
-    
+
     // matchCharacter: check if pattern character matches text character
     public static boolean matchCharacter(char patternChar, char textChar) {
         // Handle wildcard
         if (patternChar == '.') {
             return true; // . matches any character
         }
-        
+
         // For literal character matching
         return patternChar == textChar;
     }
-    
+
     // Enhanced matcher for handling escape sequences like \d, \w
     public static boolean matchPattern(String pattern, String text, int patternPos, int textPos) {
         if (patternPos >= pattern.length()) {
             return true; // Pattern fully consumed
         }
-        
+
         if (textPos >= text.length()) {
             return false; // Text consumed but pattern remains
         }
-        
+
         char currentChar = pattern.charAt(patternPos);
-        
+
         // Handle escape sequences
         if (currentChar == '\\' && patternPos + 1 < pattern.length()) {
             char nextChar = pattern.charAt(patternPos + 1);
             switch (nextChar) {
                 case 'd':
-                    return Character.isDigit(text.charAt(textPos)) && 
+                    return Character.isDigit(text.charAt(textPos)) &&
                            matchPattern(pattern, text, patternPos + 2, textPos + 1);
                 case 'w':
-                    return (Character.isLetterOrDigit(text.charAt(textPos)) || text.charAt(textPos) == '_') && 
+                    return (Character.isLetterOrDigit(text.charAt(textPos)) || text.charAt(textPos) == '_') &&
                            matchPattern(pattern, text, patternPos + 2, textPos + 1);
                 default:
-                    return text.charAt(textPos) == nextChar && 
+                    return text.charAt(textPos) == nextChar &&
                            matchPattern(pattern, text, patternPos + 2, textPos + 1);
             }
         }
-        
+
         // Handle character classes [abc] and [^abc]
         if (currentChar == '[') {
             int closeBracket = pattern.indexOf(']', patternPos);
@@ -162,21 +183,21 @@ public class Main {
                 return matches && matchPattern(pattern, text, closeBracket + 1, textPos + 1);
             }
         }
-        
+
         // Handle literal characters
-        return matchCharacter(currentChar, text.charAt(textPos)) && 
+        return matchCharacter(currentChar, text.charAt(textPos)) &&
                matchPattern(pattern, text, patternPos + 1, textPos + 1);
     }
-    
+
     // Handle character classes like [abc] or [^abc]
     public static boolean matchCharacterClass(String charClass, char textChar) {
         if (!charClass.startsWith("[") || !charClass.endsWith("]")) {
             return false;
         }
-        
+
         String chars = charClass.substring(1, charClass.length() - 1);
         boolean isNegative = chars.startsWith("^");
-        
+
         if (isNegative) {
             chars = chars.substring(1);
             return chars.indexOf(textChar) == -1;
