@@ -60,6 +60,11 @@ public class Main {
             return matchStar(regexp.charAt(0), regexp.substring(2), text, textPos);
         }
         
+        // Handle plus quantifier (c+)
+        if (regexp.length() > 1 && regexp.charAt(1) == '+') {
+            return matchPlus(regexp.charAt(0), regexp.substring(2), text, textPos);
+        }
+        
         // Handle end anchor ($)
         if (regexp.length() == 1 && regexp.charAt(0) == '$') {
             return textPos == text.length();
@@ -78,6 +83,24 @@ public class Main {
         // Try matching zero occurrences first
         if (matchHere(regexp, text, textPos)) {
             return true;
+        }
+        
+        // Try matching one or more occurrences
+        while (textPos < text.length() && matchCharacter(c, text.charAt(textPos))) {
+            textPos++;
+            if (matchHere(regexp, text, textPos)) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    // matchPlus: search for c+regexp at beginning of text (one or more)
+    public static boolean matchPlus(char c, String regexp, String text, int textPos) {
+        // Must match at least one occurrence
+        if (textPos >= text.length() || !matchCharacter(c, text.charAt(textPos))) {
+            return false;
         }
         
         // Try matching one or more occurrences
