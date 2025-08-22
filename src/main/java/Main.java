@@ -12,48 +12,52 @@ public class Main {
         }
 
         StringBuilder patternBuilder = new StringBuilder();
+        int firstFileIdx = -1;
         for (int i = 1; i < args.length; i++) {
-            if (i > 1 && !(args[i].endsWith(".txt") || args[i].endsWith(".log"))) {
+            if (args[i].endsWith(".txt") || args[i].endsWith(".log")) {
+                firstFileIdx = i;
+                break;
+            }
+            if (i > 1) {
                 patternBuilder.append(" ");
             }
-            if (!(args[i].endsWith(".txt") || args[i].endsWith(".log"))) {
-                patternBuilder.append(args[i]);
-            }
+            patternBuilder.append(args[i]);
         }
         String pattern = patternBuilder.toString();
 
         boolean found = false;
 
-        String filename = null;
-        if (args.length > 2
-                && (args[args.length - 1].endsWith(".txt")
-                || args[args.length - 1].endsWith(".log"))) {
-            filename = args[args.length - 1];
-        }
-
-        if (filename != null) {
-            try (Scanner fileScanner = new Scanner(new File(filename))) {
-                while (fileScanner.hasNextLine()) {
-                    String line = fileScanner.nextLine();
-                    if (matchPattern(line, pattern)) {
-                        System.out.println(line);
-                        found = true;
+        if (firstFileIdx != -1) {
+            for (int i = firstFileIdx; i < args.length; i++) {
+                String filename = args[i];
+                try (Scanner fileScanner = new Scanner(new File(filename))) {
+                    while (fileScanner.hasNextLine()) {
+                        String line = fileScanner.nextLine();
+                        if (matchPattern(line, pattern)) {
+                            if (args.length - firstFileIdx > 1) {
+                                System.out.println(filename + ":" + line);
+                            } else {
+                                System.out.println(line);
+                            }
+                            found = true;
+                        }
                     }
+                } catch (FileNotFoundException e) {
+                    System.err.println("File not found: " + filename);
+                    System.exit(1);
                 }
-            } catch (FileNotFoundException e) {
-                System.err.println("File not found: " + filename);
-                System.exit(1);
             }
             System.exit(found ? 0 : 1);
         } else {
-            // Leer de stdin como antes
-            Scanner scanner = new Scanner(System.in);
-            String inputLine = scanner.nextLine();
-            if (matchPattern(inputLine, pattern)) {
-                System.out.println(inputLine);
-                System.exit(0);
-            } else {
-                System.exit(1);
+            try (
+                    Scanner scanner = new Scanner(System.in)) {
+                String inputLine = scanner.nextLine();
+                if (matchPattern(inputLine, pattern)) {
+                    System.out.println(inputLine);
+                    System.exit(0);
+                } else {
+                    System.exit(1);
+                }
             }
         }
     }
